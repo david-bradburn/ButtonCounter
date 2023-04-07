@@ -36,15 +36,12 @@ wire button1;
 wire buttonReg1;
 assign button1 = KEY[0];
 
-metastability_register_N
-#(
-.busWidth(1)
-)
-metastab1
-(
-.clk(MAX10_CLK1_50),
-.busIn(button1),
-.busOut(buttonReg1)
+metastability_register_N #(
+	.busWidth(1)
+) metastab1 (
+	.clk(MAX10_CLK1_50),
+	.busIn(button1),
+	.busOut(buttonReg1)
 );
 
 wire button2;
@@ -107,17 +104,17 @@ wire convdone;
 
 Binary_to_BCD
 #(
-.INPUT_WIDTH(20),
-.DECIMAL_DIGITS(6)
+	.INPUT_WIDTH(20),
+	.DECIMAL_DIGITS(6)
 )
 BCD
 (
-.i_Clock(MAX10_CLK1_50),
-.i_Binary(counter),
-.i_Start(startConv),
-//
-.o_BCD(number),
-.o_DV(convdone)
+	.i_Clock(MAX10_CLK1_50),
+	.i_Binary(counter),
+	.i_Start(startConv),
+	//
+	.o_BCD(number),
+	.o_DV(convdone)
 );
 
 //=======================================================
