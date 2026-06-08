@@ -1,7 +1,7 @@
 
 
 
-module ButtonCounter_tb;
+module buttoncounter_tb;
 
   // Parameters
 
@@ -23,13 +23,14 @@ assign KEY = {decButton, incButton};
   ButtonCounter
   ButtonCounter_dut (
     .MAX10_CLK1_50 (MAX10_CLK1_50 ),
-    .HEX0 (HEX0 ),
-    .HEX1 (HEX1 ),
-    .HEX2 (HEX2 ),
-    .HEX3 (HEX3 ),
-    .HEX4 (HEX4 ),
-    .HEX5 (HEX5 ),
-    .KEY  ( KEY)
+    .resetn        (resetn),
+    .HEX0          (HEX0 ),
+    .HEX1          (HEX1 ),
+    .HEX2          (HEX2 ),
+    .HEX3          (HEX3 ),
+    .HEX4          (HEX4 ),
+    .HEX5          (HEX5 ),
+    .KEY           ( KEY)
   );
 
 
@@ -39,23 +40,30 @@ assign KEY = {decButton, incButton};
   begin
       #10;
       MAX10_CLK1_50 <= !MAX10_CLK1_50;
-
   end
 
-  initial
-  begin
+  initial begin
+    $dumpfile("tb_output.vcd");
+    $dumpvars(0, buttoncounter_tb);
+  end
+
+  initial begin
+    resetn <= 1'b0;
     #100;
+    resetn <= 1'b1;
+
+    #1000;
     incButton <= 1'b0;
-    #100;
+    #1000;
 
     incButton <= 1'b1;
-    #100;
+    #1000;
 
     decButton <= 1'b0;
-    #100;
+    #1000;
 
     decButton <= 1'b1;
-    #100;
+    #1000;
 
     $finish;
   end
