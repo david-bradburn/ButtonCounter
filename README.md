@@ -1,11 +1,28 @@
 # ButtonCounter
 
-Writen in Verilog my first attempt at writing synthesisable code for the DE10-Lite dev board
+Initially writen in verilog and now upgrade to system verilog. This was my first attempt at writing synthesisable code for the DE10-Lite dev board.
+When upgrading to sv, the link to the DE10 was most likely broken (I can't test atm).
 
-A simple button counter, one button counts up, another counts down. Bounded by 0 and 999999. Uses a binary to BCD converter so I can reuse this to read accelerometer data. This also uses a metastability module to ensure proper clock edge detection
+A simple button counter, one button counts up, another counts down.
+Currently the module counts the number of cycles that the button has been held down for and increments it by that amount. Bounded by 0 and 999999.
 
-# How to run
+The system makes use a binary to decimal converter (bcd) - shamelessly taken from the internet (will dig up link).
 
+
+# How to run (using icarus)
+While in the root of the checkout
 - iverilog -g2012 -o tb_output.vcd -c logical/filelist -c sim/filelist_tb
 - vvp tb_output.vcd
 - gtkwave tb_output.vcd
+
+# Notes on TB
+
+Included with the design is a sv testbench that just drives
+
+# Future plans
+
+- Add a param for edge counting rather than cycle counting to make single increments/decrements possible
+- Add a switch to go from decimal to hex.
+- Write python script to generate inputs and expected outputs
+  - Upgrade the TB to read in the test files and drive the design as such for verif purposes
+

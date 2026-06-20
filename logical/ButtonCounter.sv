@@ -10,16 +10,19 @@ module ButtonCounter(
   input wire                   resetn,
 
   //////////// SEG7 //////////
-  output wire [7:0]            HEX0,
-  output wire [7:0]            HEX1,
-  output wire [7:0]            HEX2,
-  output wire [7:0]            HEX3,
-  output wire [7:0]            HEX4,
-  output wire [7:0]            HEX5,
+  output wire [7:0]            hex0,
+  output wire [7:0]            hex1,
+  output wire [7:0]            hex2,
+  output wire [7:0]            hex3,
+  output wire [7:0]            hex4,
+  output wire [7:0]            hex5,
 
   //////////// KEY //////////
-  input  wire [1:0]            KEY
+  input  wire [1:0]            key
 );
+
+localparam NUMBER_HEX_ELEMENTS = 6;
+localparam COUNTER_SIZE        = 20;
 
 typedef enum logic [7:0] {
   ZERO  = 8'b11000000,
@@ -37,70 +40,81 @@ typedef enum logic [7:0] {
 typedef enum logic [1:0] {
   IDLE           = 2'h0,
   WAITINGONCOUNT = 2'h1,
-  UPDATE7SEG     = 2'h2
+  UPDATE7SEG     = 2'h2,
+  SYS_UNUSED_3   = 2'h3
 } sys_state_e;
+
+typedef enum logic {
+  BUTTON_NOT_PRESSED = 1'h0,
+  BUTTON_PRESSED     = 1'h1
+} button_state_e ;
 
 sys_state_e sys_state, sys_state_nxt;
 
-typedef enum logic {
-  WAITING       = 1'h0,
-  BUTTONPRESSED = 1'h1
-} button_state_e ;
-
-wire button1;
-wire buttonReg1;
-assign button1 = KEY[0];
-wire button2;
-wire button2_q;
-assign button2 = KEY[1];
-
-metastability_register_N #(
-  .busWidth (1)
-) metastab1 (
-  .clk      (clk       ),
-  .busIn    (button1   ),
-  .busOut   (buttonReg1)
-);
-
-metastability_register_N #(
-  .busWidth (1)
-) metastab2 (
-  .clk      (clk       ),
-  .busIn    (button2   ),
-  .busOut   (button2_q)
-);
+wire count_up;
+wire count_down;
 
 
-logic [19:0] counter, counter_nxt;
-integer last_counter = 0;
-integer i;
-integer n;
-integer j;
+
+logic [COUNTER_SIZE-1:0] counter, counter_nxt, counter_q;
+logic  convdone, convdone_q;
 
 
-seg4num_e num [0:5];
+seg4num_e num [NUMBER_HEX_ELEMENTS-1:0];
+logic [23:0] number, number_q;
 
-assign HEX0 = num[0];
-assign HEX1 = num[1];
-assign HEX2 = num[2];
-assign HEX3 = num[3];
-assign HEX4 = num[4];
-assign HEX5 = num[5];
+always_ff @(posedge clk or negedge resetn) begin
+  if(!resetn) begin
+    number_q <= 23'h0;
+    convdone_q <= 1'b0;
+  end else begin
+    if (convdone) begin
+      number_q <= number;
+      convdone_q <=  convdone;
+    end
 
-wire [23:0] number;
+  end
+end
+
+
+assign hex0 = num[0];
+assign hex1 = num[1];
+assign hex2 = num[2];
+assign hex3 = num[3];
+assign hex4 = num[4];
+assign hex5 = num[5];
+
 
 //999999 is 20 bits
 
 logic [3:0] seg [0:5];
 
 logic startConv;
-wire convdone;
 
+button_state_e buttons_state [1:0], buttons_state_nxt [1:0];
+
+metastability_register_N #(
+  .BUSWIDTH (1)
+) metastab1 (
+  .clk      (clk      ),
+  .busIn    (key[0]   ),
+  .busOut   (count_up )
+);
+
+
+
+metastability_register_N #(
+  .BUSWIDTH (1)
+) metastab2 (
+  .clk      (clk        ),
+  .busIn    (key[1]     ),
+  .busOut   (count_down )
+);
 
 Binary_to_BCD
 #(
-  .INPUT_WIDTH    (20),
-  .DECIMAL_DIGITS (6)
+  .INPUT_WIDTH    (COUNTER_SIZE),
+  .DECIMAL_DIGITS (NUMBER_HEX_ELEMENTS)
 ) BCD (
   .i_Clock        (clk),
   .i_Binary       (counter),
@@ -114,133 +128,109 @@ Binary_to_BCD
 //  Structural coding
 //=======================================================
 
-button_state_e button_state, button_state_nxt;
 
-logic lastButton1;
-logic lastButton2;
+// always_ff @(posedge clk or negedge resetn) begin
+//   if (resetn) begin
 
-always_ff @(posedge clk or negedge resetn) begin
-  if (resetn) begin
-
-  end else begin
-  end
-end
+//   end else begin
+//   end
+// end
 
 always @(*) begin
+    startConv = 1'b0;
     case(sys_state)
-      IDLE :
-      begin
-        if(last_counter != counter)
+      SYS_UNUSED_3,
+      IDLE : begin
+        if(counter_q != counter)
         begin
           sys_state_nxt = WAITINGONCOUNT;
           startConv = 1'b1;
-          // last_counter = counter;
         end
       end
 
-      WAITINGONCOUNT :
-      begin
+      WAITINGONCOUNT : begin
         startConv = 1'b0;
         if(convdone)
           sys_state_nxt = UPDATE7SEG;
       end
 
-      UPDATE7SEG :
-      begin
-        seg[0] = number[3:0];
-        seg[1] = number[7:4];
-        seg[2] = number[11:8];
-        seg[3] = number[15:12];
-        seg[4] = number[19:16];
-        seg[5] = number[23:20];
+      UPDATE7SEG : begin
+        seg[0] = number_q[3:0];
+        seg[1] = number_q[7:4];
+        seg[2] = number_q[11:8];
+        seg[3] = number_q[15:12];
+        seg[4] = number_q[19:16];
+        seg[5] = number_q[23:20];
 
         sys_state_nxt = IDLE;
       end
+
     endcase
 end
 
 always_ff @(posedge clk or negedge resetn) begin
   if (!resetn) begin
     sys_state_nxt <= IDLE;
+    counter       <= {COUNTER_SIZE{1'b0}};
+    counter_q     <= {COUNTER_SIZE{1'b0}};
   end else begin
-    sys_state <= sys_state_nxt;
+    sys_state     <= sys_state_nxt;
+    counter       <= counter_nxt;
+    if (sys_state == IDLE) begin
+      counter_q     <= counter;
+    end
   end
 end
 
+localparam MAX_VALUE = 999999; //figure out how to calculate this
 
 
-always @(*)
-begin
-  case(button_state)
-    `waiting :
-    begin
-      if(lastButton1 != buttonReg1)
-      begin
-        counter = counter + 1;
-        stateButton <= `buttonPressed;
-        if(counter > 999999)
-          counter = 999999;
-      end
-      else if(lastButton2 != button2_q)
-      begin
-        counter = counter - 1;
-        stateButton <= `buttonPressed;
-        if(counter < 0)
-          counter = 0;
-      end
-
-      lastButton1 <= buttonReg1;
-      lastButton2 <= button2_q;
-
+always_comb begin
+  case({count_up, count_down})
+    2'b00, 2'b11: begin
+      counter_nxt = counter;
     end
 
-    `buttonPressed :
-    begin
-      if(lastButton1 != buttonReg1)
-      begin
-        stateButton <= `waiting;
-      end
-      if(lastButton2 != button2_q)
-      begin
-        stateButton <= `waiting;
-      end
-
-      lastButton1 <= buttonReg1;
-      lastButton2 <= button2_q;
-
-
+    2'b01: begin
+      counter_nxt = (counter > 0) ? counter - 1'b1 :
+                                    counter;
     end
+
+    2'b10: begin
+      counter_nxt = (counter < MAX_VALUE) ? counter + 1'b1 :
+                                            counter;
+    end
+
+    default: counter_nxt = {COUNTER_SIZE{1'bx}};
+
   endcase
-
 end
 
 
-
-always @(posedge clk or negedge resetn) begin
+always_ff @(posedge clk or negedge resetn) begin
   if (!resetn) begin
-    for (i = 0; i <= 5; i = i + 1)
+    for (integer i = 0; i < NUMBER_HEX_ELEMENTS; i = i + 1)
       begin
         num[i] <= 8'hff;
       end
   end else begin
-    for (n = 0; n <= 5; n = n + 1)
+    for (integer n = 0; n < NUMBER_HEX_ELEMENTS; n = n + 1)
     begin
       case(seg[n])
-        0 : num[n]       <=  `zero;
-        1 : num[n]       <=    `one;
-        2 : num[n]       <=   `two;
-        3 : num[n]       <= `three;
-        4 : num[n]       <=  `four;
-        5 : num[n]       <=  `five;
-        6 : num[n]       <=    `six;
-        7 : num[n]       <= `seven;
-        8 : num[n]       <= `eight;
-        9 : num[n]       <=   `nine;
+        0 : num[n] <= ZERO;
+        1 : num[n] <= ONE;
+        2 : num[n] <= TWO;
+        3 : num[n] <= THREE;
+        4 : num[n] <= FOUR;
+        5 : num[n] <= FIVE;
+        6 : num[n] <= SIX;
+        7 : num[n] <= SEVEN;
+        8 : num[n] <= EIGHT;
+        9 : num[n] <= NINE;
         default : num[n] <= 8'hx;
       endcase
     end
   end
-
 end
 
 
