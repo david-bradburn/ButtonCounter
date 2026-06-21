@@ -8,6 +8,7 @@ Currently the module counts the number of cycles that the button has been held d
 
 The system makes use a binary to decimal converter (bcd) - shamelessly taken from the internet (will dig up link).
 
+Note there is a param that use to change the counting from cycle to button press edges,
 
 # How to run (using icarus)
 While in the root of the checkout
@@ -17,11 +18,10 @@ While in the root of the checkout
 
 # Notes on TB
 
-Included with the design is a sv testbench that just drives
+Included with the design is a sv testbench that just drives inputs
 
 # Future plans
 
-- Add a param for edge counting rather than cycle counting to make single increments/decrements possible
 - Add a switch to go from decimal to hex.
 - Write python script to generate inputs and expected outputs
   - Upgrade the TB to read in the test files and drive the design as such for verif purposes

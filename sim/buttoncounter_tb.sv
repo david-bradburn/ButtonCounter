@@ -22,8 +22,9 @@ logic resetn;
 
 assign KEY = {decButton, incButton};
 
-ButtonCounter
-ButtonCounter_dut (
+ButtonCounter #(
+  .COUNT_RISING_EDGE (1)
+) u_dut (
   .clk           (clk    ),
   .resetn        (resetn ),
   .hex0          (HEX0   ),
@@ -46,6 +47,9 @@ end
 initial begin
   $dumpfile("tb_output.vcd");
   $dumpvars(0, buttoncounter_tb);
+  // need to dump the arrays here
+  for (integer idx = 0; idx < 6; idx = idx + 1) $dumpvars(0, u_dut.seg[idx]);
+
 end
 
 initial begin
