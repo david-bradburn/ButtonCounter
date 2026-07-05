@@ -24,12 +24,14 @@ module ButtonCounter #(
 );
 
 localparam NUMBER_HEX_ELEMENTS = 6;
+localparam BITS_PER_ELEMENT    = 4;
+localparam BIT_PER_NUMBER      = BITS_PER_ELEMENT * NUMBER_HEX_ELEMENTS;
 localparam COUNTER_SIZE        = 20;
 
 localparam MAX_PER_ELEMENT = 9;
-// localparam MAX_VALUE       = 999999; //figure out how to calculate this
 logic [31:0] max_val; //figured out a way
 
+// Special case to keep near top of file
 always_comb begin
   max_val = 0;
   for (integer w=0; w< NUMBER_HEX_ELEMENTS; w=w+1) begin
@@ -37,19 +39,50 @@ always_comb begin
   end
 end
 
+// Pattern should look like this
+//  +-0-+
+//  |   |
+//  5   1
+//  |   |
+//  +-6-+
+//  |   |
+//  4   2
+//  |   |
+//  +-3-+ .7
+//
+// 1 is off and 0 is on
+//
+typedef enum logic [7:0] {
+  DEC_ZERO  = 8'b11000000,
+  DEC_ONE   = 8'b11111001,
+  DEC_TWO   = 8'b10100100,
+  DEC_THREE = 8'b10110000,
+  DEC_FOUR  = 8'b10011001,
+  DEC_FIVE  = 8'b10010010,
+  DEC_SIX   = 8'b10000010,
+  DEC_SEVEN = 8'b11111000,
+  DEC_EIGHT = 8'b10000000,
+  DEC_NINE  = 8'b10011000
+} seg4num_dec_e;
 
 typedef enum logic [7:0] {
-  ZERO  = 8'b11000000,
-  ONE   = 8'b11111001,
-  TWO   = 8'b10100100,
-  THREE = 8'b10110000,
-  FOUR  = 8'b10011001,
-  FIVE  = 8'b10010010,
-  SIX   = 8'b10000010,
-  SEVEN = 8'b11111000,
-  EIGHT = 8'b10000000,
-  NINE  = 8'b10011000
-} seg4num_e;
+  HEX_ZERO  = 8'b11000000,
+  HEX_ONE   = 8'b11111001,
+  HEX_TWO   = 8'b10100100,
+  HEX_THREE = 8'b10110000,
+  HEX_FOUR  = 8'b10011001,
+  HEX_FIVE  = 8'b10010010,
+  HEX_SIX   = 8'b10000010,
+  HEX_SEVEN = 8'b11111000,
+  HEX_EIGHT = 8'b10000000,
+  HEX_NINE  = 8'b10011000,
+  HEX_10    = 8'b10001000, // A
+  HEX_11    = 8'b10000011, // b  as B looks like 8
+  HEX_12    = 8'b10100111, // c not C
+  HEX_13    = 8'b10100001, // d not D as D looks like 0
+  HEX_14    = 8'b10000110, // E as e is impossible
+  HEX_15    = 8'b10001110  // F
+} seg4num_hex_e;
 
 typedef enum logic {
   IDLE          = 1'h0,
@@ -67,42 +100,21 @@ logic count_down, count_down_q;
 logic [COUNTER_SIZE-1:0] counter, counter_nxt, counter_q;
 logic  convdone, convdone_q;
 
-
-seg4num_e num [NUMBER_HEX_ELEMENTS-1:0];
-logic [23:0] number, number_q;
-
-always_ff @(posedge clk or negedge resetn) begin
-  if(!resetn) begin
-    number_q   <= 23'h0;
-    convdone_q <= 1'b0;
-  end else begin
-    if (convdone) begin
-      number_q   <= number;
-      convdone_q <=  convdone;
-    end
-
-  end
-end
-
-
-assign hex0 = num[0];
-assign hex1 = num[1];
-assign hex2 = num[2];
-assign hex3 = num[3];
-assign hex4 = num[4];
-assign hex5 = num[5];
-
-
-//999999 is 20 bits
-
 logic [3:0] seg [0:5];
-
 logic startConv;
+logic [1:0] buttons;
+
+seg4num_dec_e num [NUMBER_HEX_ELEMENTS-1:0];
+logic [BIT_PER_NUMBER-1:0] number, number_q;
+
+
+// Module definitions
 
 metastability_register_N #(
   .BUSWIDTH (1)
 ) metastab1 (
   .clk      (clk      ),
+  .resetn   (resetn   ),
   .busIn    (key[0]   ),
   .busOut   (count_up )
 );
@@ -113,6 +125,7 @@ metastability_register_N #(
   .BUSWIDTH (1)
 ) metastab2 (
   .clk      (clk        ),
+  .resetn   (resetn     ),
   .busIn    (key[1]     ),
   .busOut   (count_down )
 );
@@ -134,28 +147,60 @@ Binary_to_BCD
 //  Structural coding
 //=======================================================
 
+always_ff @(posedge clk or negedge resetn) begin
+  if(!resetn) begin
+    number_q   <= {BIT_PER_NUMBER{1'b0}};
+    convdone_q <= 1'b0;
+  end else begin
+    if (convdone) begin
+      number_q   <= number;
+      convdone_q <=  convdone;
+    end
+  end
+end
+
+
+assign hex0 = num[0];
+assign hex1 = num[1];
+assign hex2 = num[2];
+assign hex3 = num[3];
+assign hex4 = num[4];
+assign hex5 = num[5];
+
+
+
 assign count_up_re   = count_up & !count_up_q;
 assign count_down_re = count_down & !count_down_q;
 
-for (genvar h=0; h<NUMBER_HEX_ELEMENTS; h=h+1) begin
-  assign seg[h] = number_q[h*3+: 3];
-end
+for (genvar h=0; h<NUMBER_HEX_ELEMENTS; h=h+1) begin : set_seg
+  assign seg[h] = number_q[h*BITS_PER_ELEMENT+: BITS_PER_ELEMENT];
+end : set_seg
 
 always @(*) begin
     startConv = 1'b0;
     case(sys_state)
       IDLE : begin
-        if(counter_q != counter)
-        begin
+        if(counter_q != counter) begin
           sys_state_nxt = WAIT_FOR_CONV;
           startConv = 1'b1;
+        end else begin // need to be careful not to add latches!!!
+          sys_state_nxt = sys_state;
+          startConv = 1'b0;
         end
       end
 
       WAIT_FOR_CONV : begin
         startConv = 1'b0;
-        if(convdone)
+        if(convdone) begin
           sys_state_nxt = IDLE;
+        end else begin
+          sys_state_nxt = sys_state;
+        end
+      end
+
+      default : begin
+        sys_state_nxt = sys_state_e'(1'bx);
+        startConv = 1'bx;
       end
 
     endcase
@@ -163,7 +208,7 @@ end
 
 always_ff @(posedge clk or negedge resetn) begin
   if (!resetn) begin
-    sys_state_nxt <= IDLE;
+    sys_state     <= IDLE;
     counter       <= {COUNTER_SIZE{1'b0}};
     counter_q     <= {COUNTER_SIZE{1'b0}};
     count_up_q    <= 1'b0;
@@ -181,7 +226,6 @@ end
 
 
 
-logic [1:0] buttons;
 assign buttons = COUNT_RISING_EDGE ? {count_up_re, count_down_re} :
                                      {count_up, count_down};
 
@@ -211,22 +255,22 @@ end
 always_ff @(posedge clk or negedge resetn) begin
   if (!resetn) begin
     for (integer i = 0; i < NUMBER_HEX_ELEMENTS; i = i + 1)begin
-      num[i] <= 8'hff;
+      num[i] <= DEC_ZERO;
     end
   end else begin
     for (integer n = 0; n < NUMBER_HEX_ELEMENTS; n = n + 1) begin
       case(seg[n])
-        0 : num[n] <= ZERO;
-        1 : num[n] <= ONE;
-        2 : num[n] <= TWO;
-        3 : num[n] <= THREE;
-        4 : num[n] <= FOUR;
-        5 : num[n] <= FIVE;
-        6 : num[n] <= SIX;
-        7 : num[n] <= SEVEN;
-        8 : num[n] <= EIGHT;
-        9 : num[n] <= NINE;
-        default : num[n] <= 8'hx;
+        0 : num[n] <= DEC_ZERO;
+        1 : num[n] <= DEC_ONE;
+        2 : num[n] <= DEC_TWO;
+        3 : num[n] <= DEC_THREE;
+        4 : num[n] <= DEC_FOUR;
+        5 : num[n] <= DEC_FIVE;
+        6 : num[n] <= DEC_SIX;
+        7 : num[n] <= DEC_SEVEN;
+        8 : num[n] <= DEC_EIGHT;
+        9 : num[n] <= DEC_NINE;
+        default : num[n] <= seg4num_dec_e'(8'hx);
       endcase
     end
   end

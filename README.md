@@ -23,6 +23,7 @@ Included with the design is a sv testbench that just drives inputs
 # Future plans
 
 - Add a switch to go from decimal to hex.
+  - Need to add mux for in and out of bcd
 - Write python script to generate inputs and expected outputs
   - Upgrade the TB to read in the test files and drive the design as such for verif purposes
 
