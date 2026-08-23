@@ -4,7 +4,8 @@
 //=======================================================
 
 module ButtonCounter #(
-  parameter COUNT_RISING_EDGE = 0
+  parameter COUNT_RISING_EDGE = 0,
+  parameter DISPLAY_IN_HEX = 0
 )(
 
   //////////// CLOCK //////////
@@ -28,14 +29,14 @@ localparam BITS_PER_ELEMENT    = 4;
 localparam BIT_PER_NUMBER      = BITS_PER_ELEMENT * NUMBER_HEX_ELEMENTS;
 localparam COUNTER_SIZE        = 20;
 
-localparam MAX_PER_ELEMENT = 9;
+localparam MAX_PER_ELEMENT = DISPLAY_IN_HEX ? 15 : 9;
 logic [31:0] max_val; //figured out a way
 
 // Special case to keep near top of file
 always_comb begin
   max_val = 0;
   for (integer w=0; w< NUMBER_HEX_ELEMENTS; w=w+1) begin
-    max_val = max_val + (MAX_PER_ELEMENT * 10**w);
+    max_val = max_val + (MAX_PER_ELEMENT * (MAX_PER_ELEMENT+1)**w);
   end
 end
 
@@ -259,20 +260,41 @@ always_ff @(posedge clk or negedge resetn) begin
     end
   end else begin
     for (integer n = 0; n < NUMBER_HEX_ELEMENTS; n = n + 1) begin
-      case(seg[n])
-        0 : num[n] <= DEC_ZERO;
-        1 : num[n] <= DEC_ONE;
-        2 : num[n] <= DEC_TWO;
-        3 : num[n] <= DEC_THREE;
-        4 : num[n] <= DEC_FOUR;
-        5 : num[n] <= DEC_FIVE;
-        6 : num[n] <= DEC_SIX;
-        7 : num[n] <= DEC_SEVEN;
-        8 : num[n] <= DEC_EIGHT;
-        9 : num[n] <= DEC_NINE;
-        default : num[n] <= seg4num_dec_e'(8'hx);
-      endcase
-    end
+      if (DISPLAY_IN_HEX) begin
+        case(seg[n])
+          0  : num[n] <= HEX_ZERO;
+          1  : num[n] <= HEX_ONE;
+          2  : num[n] <= HEX_TWO;
+          3  : num[n] <= HEX_THREE;
+          4  : num[n] <= HEX_FOUR;
+          5  : num[n] <= HEX_FIVE;
+          6  : num[n] <= HEX_SIX;
+          7  : num[n] <= HEX_SEVEN;
+          8  : num[n] <= HEX_EIGHT;
+          9  : num[n] <= HEX_NINE;
+          10 : num[n] <= HEX_10;
+          11 : num[n] <= HEX_11;
+          12 : num[n] <= HEX_12;
+          13 : num[n] <= HEX_13;
+          14 : num[n] <= HEX_14;
+          15 : num[n] <= HEX_15;
+          default : num[n] <= seg4num_hex_e'(8'hx);
+        endcase
+      end else begin
+        case(seg[n])
+          0 : num[n] <= DEC_ZERO;
+          1 : num[n] <= DEC_ONE;
+          2 : num[n] <= DEC_TWO;
+          3 : num[n] <= DEC_THREE;
+          4 : num[n] <= DEC_FOUR;
+          5 : num[n] <= DEC_FIVE;
+          6 : num[n] <= DEC_SIX;
+          7 : num[n] <= DEC_SEVEN;
+          8 : num[n] <= DEC_EIGHT;
+          9 : num[n] <= DEC_NINE;
+          default : num[n] <= seg4num_dec_e'(8'hx);
+        endcase
+      end
   end
 end
 

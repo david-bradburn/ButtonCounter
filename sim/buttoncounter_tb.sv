@@ -23,7 +23,8 @@ logic resetn;
 assign KEY = {decButton, incButton};
 
 ButtonCounter #(
-  .COUNT_RISING_EDGE (1)
+  .COUNT_RISING_EDGE (1),
+  .DISPLAY_IN_HEX (1)
 ) u_dut (
   .clk           (clk    ),
   .resetn        (resetn ),

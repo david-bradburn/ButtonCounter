@@ -16,14 +16,17 @@ While in the root of the checkout
 - vvp tb_output.vcd
 - gtkwave tb_output.vcd
 
+or
+
+- run the run.bat file (remember to double check contents to ensure safety)
+
 # Notes on TB
 
-Included with the design is a sv testbench that just drives inputs
+Included with the design is a sv testbench that just drives inputs, it (currently) does not checking.
 
 # Future plans
 
-- Add a switch to go from decimal to hex.
-  - Need to add mux for in and out of bcd
+- Add a signal rather than param to go from decimal to hex?
 - Write python script to generate inputs and expected outputs
   - Upgrade the TB to read in the test files and drive the design as such for verif purposes
 
